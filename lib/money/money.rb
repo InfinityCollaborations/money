@@ -3,7 +3,7 @@ require "money/bank/variable_exchange"
 require "money/bank/single_currency"
 require "money/money/arithmetic"
 require "money/money/constructors"
-require "money/money/formatting"
+require "money/money/formatter"
 
 # "Money is any object or record that is generally accepted as payment for
 # goods and services and repayment of debts in a given socio-economic context
@@ -17,7 +17,6 @@ require "money/money/formatting"
 class Money
   include Comparable
   include Money::Arithmetic
-  include Money::Formatting
   extend Constructors
 
   # Raised when smallest denomination of a currency is not defined
@@ -358,10 +357,10 @@ class Money
             if fraction == ""
               unit
             else
-              "#{unit}#{decimal_mark}#{fraction}"
+              "#{unit}#{currency.decimal_mark}#{fraction}"
             end
           else
-            "#{unit}#{decimal_mark}#{pad_subunit(subunit)}#{fraction}"
+            "#{unit}#{currency.decimal_mark}#{pad_subunit(subunit)}#{fraction}"
           end
 
     fractional < 0 ? "-#{str}" : str
@@ -478,22 +477,17 @@ class Money
   # be distributed round-robin amongst the parties. This means that parties
   # listed first will likely receive more pennies than ones that are listed later
   #
-  # @param [Array<Numeric>] splits [0.50, 0.25, 0.25] to give 50% of the cash to party1, 25% to party2, and 25% to party3.
+  # @param [Array<Numeric>] splits [2, 1, 1] to give twice as much to party1 as party2 or party3
+  #   which results in 50% of the cash to party1, 25% to party2, and 25% to party3.
   #
   # @return [Array<Money>]
   #
   # @example
   #   Money.new(5,   "USD").allocate([0.3, 0.7])         #=> [Money.new(2), Money.new(3)]
-  #   Money.new(100, "USD").allocate([0.33, 0.33, 0.33]) #=> [Money.new(34), Money.new(33), Money.new(33)]
+  #   Money.new(100, "USD").allocate([1, 1, 1]) #=> [Money.new(34), Money.new(33), Money.new(33)]
   #
   def allocate(splits)
-    allocations = allocations_from_splits(splits)
-
-    if (allocations - BigDecimal("1")) > Float::EPSILON
-      raise ArgumentError, "splits add to more then 100%"
-    end
-
-    amounts, left_over = amounts_from_splits(allocations, splits)
+    amounts, left_over = amounts_from_splits(splits)
 
     unless self.class.infinite_precision
       delta = left_over > 0 ? 1 : -1
@@ -537,12 +531,38 @@ class Money
   # @see
   #   Money.infinite_precision
   #
-  def round(rounding_mode = self.class.rounding_mode)
+  def round(rounding_mode = self.class.rounding_mode, rounding_precision = 0)
     if self.class.infinite_precision
-      self.class.new(fractional.round(0, rounding_mode), self.currency)
+      self.class.new(fractional.round(rounding_precision, rounding_mode), self.currency)
     else
       self
     end
+  end
+
+  # Creates a formatted price string according to several rules.
+  #
+  # @param [Hash] See Money::Formatter for the list of formatting options
+  #
+  # @return [String]
+  #
+  def format(*rules)
+    Money::Formatter.new(self, *rules).to_s
+  end
+
+  # Returns a thousands separator according to the locale
+  #
+  # @return [String]
+  #
+  def thousands_separator
+    Money::Formatter.new(self, {}).thousands_separator
+  end
+
+  # Returns a decimal mark according to the locale
+  #
+  # @return [String]
+  #
+  def decimal_mark
+    Money::Formatter.new(self, {}).decimal_mark
   end
 
   private
@@ -578,16 +598,11 @@ class Money
   end
 
   def pad_subunit(subunit)
-    cnt = currency.decimal_places
-    padding = "0" * cnt
-    "#{padding}#{subunit}"[-1 * cnt, cnt]
+    subunit.rjust(currency.decimal_places, '0')
   end
 
-  def allocations_from_splits(splits)
-    splits.inject(0) { |sum, n| sum + n }
-  end
-
-  def amounts_from_splits(allocations, splits)
+  def amounts_from_splits(splits)
+    allocations = splits.inject(0, :+)
     left_over = fractional
 
     amounts = splits.map do |ratio|
