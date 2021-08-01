@@ -10,17 +10,8 @@ describe Money::RatesStore::Memory do
 
   describe 'add_rate' do
     it "uses a mutex by default" do
-      expect(subject.instance_variable_get(:@mutex)).to receive(:synchronize)
+      expect(subject.instance_variable_get(:@guard)).to receive(:synchronize)
       subject.add_rate('USD', 'EUR', 1.25)
-    end
-
-    context ':without_mutex' do
-      let(:subject) { Money::RatesStore::Memory.new(:without_mutex => true) }
-
-      it "doesn't use mutex if requested not to" do
-        expect(subject.instance_variable_get(:@mutex)).not_to receive(:synchronize)
-        subject.add_rate('USD', 'EUR', 1.25)
-      end
     end
   end
 
@@ -44,7 +35,7 @@ describe Money::RatesStore::Memory do
   describe '#transaction' do
     context 'mutex' do
       it 'uses mutex' do
-        expect(subject.instance_variable_get('@mutex')).to receive(:synchronize)
+        expect(subject.instance_variable_get('@guard')).to receive(:synchronize)
         subject.transaction{ 1 + 1 }
       end
 
@@ -56,19 +47,10 @@ describe Money::RatesStore::Memory do
         }.not_to raise_error
       end
     end
-
-    context 'no mutex' do
-      let(:subject) { Money::RatesStore::Memory.new(:without_mutex => true) }
-
-      it 'does not use mutex' do
-        expect(subject.instance_variable_get('@mutex')).not_to receive(:synchronize)
-        subject.transaction{ 1 + 1 }
-      end
-    end
   end
 
   describe '#marshal_dump' do
-    let(:subject) { Money::RatesStore::Memory.new(:optional => true) }
+    let(:subject) { Money::RatesStore::Memory.new(optional: true) }
 
     it 'can reload' do
       bank = Money::Bank::VariableExchange.new(subject)

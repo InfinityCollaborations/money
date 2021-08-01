@@ -3,6 +3,11 @@ require 'money/money/formatting_rules'
 
 class Money
   class Formatter
+    DEFAULTS = {
+      thousands_separator: '',
+      decimal_mark: '.'
+    }.freeze
+
     # Creates a formatted price string according to several rules.
     #
     # @param [Hash] rules The options used to format the string.
@@ -13,8 +18,8 @@ class Money
     #  amount of money should be formatted of "free" or as the supplied string.
     #
     # @example
-    #   Money.us_dollar(0).format(:display_free => true)     #=> "free"
-    #   Money.us_dollar(0).format(:display_free => "gratis") #=> "gratis"
+    #   Money.us_dollar(0).format(display_free: true)     #=> "free"
+    #   Money.us_dollar(0).format(display_free: "gratis") #=> "gratis"
     #   Money.us_dollar(0).format                            #=> "$0.00"
     #
     # @option rules [Boolean] :with_currency (false) Whether the currency name
@@ -22,29 +27,29 @@ class Money
     #
     # @example
     #   Money.ca_dollar(100).format #=> "$1.00"
-    #   Money.ca_dollar(100).format(:with_currency => true) #=> "$1.00 CAD"
-    #   Money.us_dollar(85).format(:with_currency => true)  #=> "$0.85 USD"
+    #   Money.ca_dollar(100).format(with_currency: true) #=> "$1.00 CAD"
+    #   Money.us_dollar(85).format(with_currency: true)  #=> "$0.85 USD"
     #
     # @option rules [Boolean] :rounded_infinite_precision (false) Whether the
     #  amount of money should be rounded when using {infinite_precision}
     #
     # @example
     #   Money.us_dollar(100.1).format #=> "$1.001"
-    #   Money.us_dollar(100.1).format(:rounded_infinite_precision => true) #=> "$1"
-    #   Money.us_dollar(100.9).format(:rounded_infinite_precision => true) #=> "$1.01"
+    #   Money.us_dollar(100.1).format(rounded_infinite_precision: true) #=> "$1"
+    #   Money.us_dollar(100.9).format(rounded_infinite_precision: true) #=> "$1.01"
     #
     # @option rules [Boolean] :no_cents (false) Whether cents should be omitted.
     #
     # @example
-    #   Money.ca_dollar(100).format(:no_cents => true) #=> "$1"
-    #   Money.ca_dollar(599).format(:no_cents => true) #=> "$5"
+    #   Money.ca_dollar(100).format(no_cents: true) #=> "$1"
+    #   Money.ca_dollar(599).format(no_cents: true) #=> "$5"
     #
     # @option rules [Boolean] :no_cents_if_whole (false) Whether cents should be
     #  omitted if the cent value is zero
     #
     # @example
-    #   Money.ca_dollar(10000).format(:no_cents_if_whole => true) #=> "$100"
-    #   Money.ca_dollar(10034).format(:no_cents_if_whole => true) #=> "$100.34"
+    #   Money.ca_dollar(10000).format(no_cents_if_whole: true) #=> "$100"
+    #   Money.ca_dollar(10034).format(no_cents_if_whole: true) #=> "$100.34"
     #
     # @option rules [Boolean, String, nil] :symbol (true) Whether a money symbol
     #  should be prepended to the result string. The default is true. This method
@@ -56,26 +61,26 @@ class Money
     #   Money.new(100, "EUR") #=> "€1.00"
     #
     #   # Same thing.
-    #   Money.new(100, "USD").format(:symbol => true) #=> "$1.00"
-    #   Money.new(100, "GBP").format(:symbol => true) #=> "£1.00"
-    #   Money.new(100, "EUR").format(:symbol => true) #=> "€1.00"
+    #   Money.new(100, "USD").format(symbol: true) #=> "$1.00"
+    #   Money.new(100, "GBP").format(symbol: true) #=> "£1.00"
+    #   Money.new(100, "EUR").format(symbol: true) #=> "€1.00"
     #
     #   # You can specify a false expression or an empty string to disable
     #   # prepending a money symbol.§
-    #   Money.new(100, "USD").format(:symbol => false) #=> "1.00"
-    #   Money.new(100, "GBP").format(:symbol => nil)   #=> "1.00"
-    #   Money.new(100, "EUR").format(:symbol => "")    #=> "1.00"
+    #   Money.new(100, "USD").format(symbol: false) #=> "1.00"
+    #   Money.new(100, "GBP").format(symbol: nil)   #=> "1.00"
+    #   Money.new(100, "EUR").format(symbol: "")    #=> "1.00"
     #
     #   # If the symbol for the given currency isn't known, then it will default
     #   # to "¤" as symbol.
-    #   Money.new(100, "AWG").format(:symbol => true) #=> "¤1.00"
+    #   Money.new(100, "AWG").format(symbol: true) #=> "¤1.00"
     #
     #   # You can specify a string as value to enforce using a particular symbol.
-    #   Money.new(100, "AWG").format(:symbol => "ƒ") #=> "ƒ1.00"
+    #   Money.new(100, "AWG").format(symbol: "ƒ") #=> "ƒ1.00"
     #
     #   # You can specify a indian currency format
-    #   Money.new(10000000, "INR").format(:south_asian_number_formatting => true) #=> "1,00,000.00"
-    #   Money.new(10000000).format(:south_asian_number_formatting => true) #=> "$1,00,000.00"
+    #   Money.new(10000000, "INR").format(south_asian_number_formatting: true) #=> "1,00,000.00"
+    #   Money.new(10000000).format(south_asian_number_formatting: true) #=> "$1,00,000.00"
     #
     # @option rules [Boolean, nil] :symbol_before_without_space (true) Whether
     #   a space between the money symbol and the amount should be inserted when
@@ -87,10 +92,10 @@ class Money
     #   Money.new(100, "USD").format #=> "$1.00"
     #
     #   # Same thing.
-    #   Money.new(100, "USD").format(:symbol_before_without_space => true) #=> "$1.00"
+    #   Money.new(100, "USD").format(symbol_before_without_space: true) #=> "$1.00"
     #
     #   # If set to false, will insert a space.
-    #   Money.new(100, "USD").format(:symbol_before_without_space => false) #=> "$ 1.00"
+    #   Money.new(100, "USD").format(symbol_before_without_space: false) #=> "$ 1.00"
     #
     # @option rules [Boolean, nil] :symbol_after_without_space (false) Whether
     #   a space between the amount and the money symbol should be inserted when
@@ -99,17 +104,17 @@ class Money
     #
     # @example
     #   # Default is to insert a space.
-    #   Money.new(100, "USD").format(:symbol_position => :after) #=> "1.00 $"
+    #   Money.new(100, "USD").format(symbol_position: :after) #=> "1.00 $"
     #
     #   # If set to true, will not insert a space.
-    #   Money.new(100, "USD").format(:symbol_position => :after, :symbol_after_without_space => true) #=> "1.00$"
+    #   Money.new(100, "USD").format(symbol_position: :after, symbol_after_without_space: true) #=> "1.00$"
     #
     # @option rules [Boolean, String, nil] :decimal_mark (true) Whether the
     #  currency should be separated by the specified character or '.'
     #
     # @example
     #   # If a string is specified, it's value is used.
-    #   Money.new(100, "USD").format(:decimal_mark => ",") #=> "$1,00"
+    #   Money.new(100, "USD").format(decimal_mark: ",") #=> "$1,00"
     #
     #   # If the decimal_mark for a given currency isn't known, then it will default
     #   # to "." as decimal_mark.
@@ -119,13 +124,16 @@ class Money
     #  the currency should be delimited by the specified character or ','
     #
     # @example
-    #   # If false is specified, no thousands_separator is used.
-    #   Money.new(100000, "USD").format(:thousands_separator => false) #=> "1000.00"
-    #   Money.new(100000, "USD").format(:thousands_separator => nil)   #=> "1000.00"
-    #   Money.new(100000, "USD").format(:thousands_separator => "")    #=> "1000.00"
+    #   # If a falsey value is specified, no thousands_separator is used.
+    #   Money.new(100000, "USD").format(thousands_separator: false) #=> "1000.00"
+    #   Money.new(100000, "USD").format(thousands_separator: nil)   #=> "1000.00"
+    #   Money.new(100000, "USD").format(thousands_separator: "")    #=> "1000.00"
+    #
+    #   # If true is specified, the locale or default thousands_separator is used.
+    #   Money.new(100000, "USD").format(thousands_separator: true) #=> "1,000.00"
     #
     #   # If a string is specified, it's value is used.
-    #   Money.new(100000, "USD").format(:thousands_separator => ".") #=> "$1.000.00"
+    #   Money.new(100000, "USD").format(thousands_separator: ".") #=> "$1.000.00"
     #
     #   # If the thousands_separator for a given currency isn't known, then it will
     #   # default to "," as thousands_separator.
@@ -135,16 +143,22 @@ class Money
     #  HTML-formatted. Only useful in combination with +:with_currency+.
     #
     # @example
-    #   Money.ca_dollar(570).format(:html => true, :with_currency => true)
+    #   Money.ca_dollar(570).format(html: true, with_currency: true)
     #   #=> "$5.70 <span class=\"currency\">CAD</span>"
+    #
+    # @option rules [Boolean] :html_wrap (false) Whether all currency parts should be HTML-formatted.
+    #
+    # @example
+    #   Money.ca_dollar(570).format(html_wrap: true, with_currency: true)
+    #   #=> "<span class=\"money-currency-symbol\">$</span><span class=\"money-whole\">5</span><span class=\"money-decimal-mark\">.</span><span class=\"money-decimal\">70</span> <span class=\"money-currency\">CAD</span>"
     #
     # @option rules [Boolean] :sign_before_symbol (false) Whether the sign should be
     #  before the currency symbol.
     #
     # @example
     #   # You can specify to display the sign before the symbol for negative numbers
-    #   Money.new(-100, "GBP").format(:sign_before_symbol => true)  #=> "-£1.00"
-    #   Money.new(-100, "GBP").format(:sign_before_symbol => false) #=> "£-1.00"
+    #   Money.new(-100, "GBP").format(sign_before_symbol: true)  #=> "-£1.00"
+    #   Money.new(-100, "GBP").format(sign_before_symbol: false) #=> "£-1.00"
     #   Money.new(-100, "GBP").format                               #=> "£-1.00"
     #
     # @option rules [Boolean] :sign_positive (false) Whether positive numbers should be
@@ -152,34 +166,34 @@ class Money
     #
     # @example
     #   # You can specify to display the sign with positive numbers
-    #   Money.new(100, "GBP").format(:sign_positive => true,  :sign_before_symbol => true)  #=> "+£1.00"
-    #   Money.new(100, "GBP").format(:sign_positive => true,  :sign_before_symbol => false) #=> "£+1.00"
-    #   Money.new(100, "GBP").format(:sign_positive => false, :sign_before_symbol => true)  #=> "£1.00"
-    #   Money.new(100, "GBP").format(:sign_positive => false, :sign_before_symbol => false) #=> "£1.00"
+    #   Money.new(100, "GBP").format(sign_positive: true,  sign_before_symbol: true)  #=> "+£1.00"
+    #   Money.new(100, "GBP").format(sign_positive: true,  sign_before_symbol: false) #=> "£+1.00"
+    #   Money.new(100, "GBP").format(sign_positive: false, sign_before_symbol: true)  #=> "£1.00"
+    #   Money.new(100, "GBP").format(sign_positive: false, sign_before_symbol: false) #=> "£1.00"
     #   Money.new(100, "GBP").format                               #=> "£+1.00"
     #
     # @option rules [Boolean] :disambiguate (false) Prevents the result from being ambiguous
     #  due to equal symbols for different currencies. Uses the `disambiguate_symbol`.
     #
     # @example
-    #   Money.new(10000, "USD").format(:disambiguate => false)   #=> "$100.00"
-    #   Money.new(10000, "CAD").format(:disambiguate => false)   #=> "$100.00"
-    #   Money.new(10000, "USD").format(:disambiguate => true)    #=> "$100.00"
-    #   Money.new(10000, "CAD").format(:disambiguate => true)    #=> "C$100.00"
+    #   Money.new(10000, "USD").format(disambiguate: false)   #=> "$100.00"
+    #   Money.new(10000, "CAD").format(disambiguate: false)   #=> "$100.00"
+    #   Money.new(10000, "USD").format(disambiguate: true)    #=> "$100.00"
+    #   Money.new(10000, "CAD").format(disambiguate: true)    #=> "C$100.00"
     #
     # @option rules [Boolean] :html_wrap_symbol (false) Wraps the currency symbol
     #  in a html <span> tag.
     #
     # @example
-    #   Money.new(10000, "USD").format(:disambiguate => false)
+    #   Money.new(10000, "USD").format(disambiguate: false)
     #   #=> "<span class=\"currency_symbol\">$100.00</span>
     #
     # @option rules [Symbol] :symbol_position (:before) `:before` if the currency
     #   symbol goes before the amount, `:after` if it goes after.
     #
     # @example
-    #   Money.new(10000, "USD").format(:symbol_position => :before) #=> "$100.00"
-    #   Money.new(10000, "USD").format(:symbol_position => :after)  #=> "100.00 $"
+    #   Money.new(10000, "USD").format(symbol_position: :before) #=> "$100.00"
+    #   Money.new(10000, "USD").format(symbol_position: :after)  #=> "100.00 $"
     #
     # @option rules [Boolean] :translate (true) `true` Checks for custom
     #   symbol definitions using I18n.
@@ -191,11 +205,27 @@ class Money
     #   #     currency:
     #   #       symbol:
     #   #         CAD: "CAD$"
-    #   Money.new(10000, "CAD").format(:translate => true) #=> "CAD$100.00"
+    #   Money.new(10000, "CAD").format(translate: true) #=> "CAD$100.00"
+    #
+    # @option rules [Boolean] :drop_trailing_zeros (false) Ignore trailing zeros after
+    #   the decimal mark
     #
     # @example
-    #   Money.new(89000, :btc).format(:drop_trailing_zeros => true) #=> B⃦0.00089
-    #   Money.new(110, :usd).format(:drop_trailing_zeros => true)   #=> $1.1
+    #   Money.new(89000, :btc).format(drop_trailing_zeros: true) #=> B⃦0.00089
+    #   Money.new(110, :usd).format(drop_trailing_zeros: true)   #=> $1.1
+    #
+    # @option rules [Boolean] :delimiter_pattern (/(\d)(?=(?:\d{3})+(?:[^\d]{1}|$))/) Regular expression to set the placement
+    #   for the thousands delimiter
+    #
+    # @example
+    #   Money.new(89000, :btc).format(delimiter_pattern: /(\d)(?=\d)/) #=> B⃦8,9,0.00
+    #
+    # @option rules [String] :format (nil) Provide a template for formatting. `%u` will be replaced
+    # with the symbol (if present) and `%n` will be replaced with the number.
+    #
+    # @example
+    #   Money.new(10000, "USD").format(format: '%u %n') #=> "$ 100.00"
+    #   Money.new(10000, "USD").format(format: '<span>%u%n</span>')  #=> "<span>$100.00</span>"
     #
     # Note that the default rules can be defined through {Money.default_formatting_rules} hash.
     #
@@ -208,7 +238,31 @@ class Money
 
     def to_s
       return free_text if show_free_text?
+      result = format_number
+      formatted = append_sign(result)
+      append_currency_symbol(formatted)
+    end
 
+    def thousands_separator
+      val = lookup :thousands_separator
+
+      return val unless val == true
+
+      lookup_default :thousands_separator
+    end
+
+    def decimal_mark
+      lookup :decimal_mark
+    end
+
+    alias_method :delimiter, :thousands_separator
+    alias_method :separator, :decimal_mark
+
+    private
+
+    attr_reader :money, :currency, :rules
+
+    def format_number
       whole_part, decimal_part = extract_whole_and_decimal_parts
 
       # Format whole and decimal parts separately
@@ -216,8 +270,22 @@ class Money
       whole_part = format_whole_part(whole_part)
 
       # Assemble the final formatted amount
-      formatted = [whole_part, decimal_part].compact.join(decimal_mark)
+      if rules[:html_wrap]
+        if decimal_part.nil?
+          html_wrap(whole_part, "whole")
+        else
+          [
+            html_wrap(whole_part, "whole"),
+            html_wrap(decimal_mark, "decimal-mark"),
+            html_wrap(decimal_part, "decimal")
+          ].join
+        end
+      else
+        [whole_part, decimal_part].compact.join(decimal_mark)
+      end
+    end
 
+    def append_sign(formatted_number)
       sign = money.negative? ? '-' : ''
 
       if rules[:sign_positive] == true && money.positive?
@@ -232,54 +300,41 @@ class Money
       symbol_value = symbol_value_from(rules)
 
       if symbol_value && !symbol_value.empty?
-        symbol_value = "<span class=\"currency_symbol\">#{symbol_value}</span>" if rules[:html_wrap_symbol]
-        symbol_position = symbol_position_from(rules)
-
-        formatted = if symbol_position == :before
-          symbol_space = rules[:symbol_before_without_space] === false ? " " : ""
-          "#{sign_before}#{symbol_value}#{symbol_space}#{sign}#{formatted}"
-        else
-          symbol_space = rules[:symbol_after_without_space] ? "" : " "
-          "#{sign_before}#{sign}#{formatted}#{symbol_space}#{symbol_value}"
+        if rules[:html_wrap_symbol]
+          symbol_value = "<span class=\"currency_symbol\">#{symbol_value}</span>"
+        elsif rules[:html_wrap]
+          symbol_value = html_wrap(symbol_value, "currency-symbol")
         end
-      else
-        formatted="#{sign_before}#{sign}#{formatted}"
-      end
 
+        rules[:format]
+          .gsub('%u', [sign_before, symbol_value].join)
+          .gsub('%n', [sign, formatted_number].join)
+      else
+        formatted_number = "#{sign_before}#{sign}#{formatted_number}"
+      end
+    end
+
+    def append_currency_symbol(formatted_number)
       if rules[:with_currency]
-        formatted << " "
-        formatted << '<span class="currency">' if rules[:html]
-        formatted << currency.to_s
-        formatted << '</span>' if rules[:html]
+        formatted_number << " "
+
+        if rules[:html]
+          formatted_number << "<span class=\"currency\">#{currency.to_s}</span>"
+        elsif rules[:html_wrap]
+          formatted_number << html_wrap(currency.to_s, "currency")
+        else
+          formatted_number << currency.to_s
+        end
       end
-      formatted
+      formatted_number
     end
-
-    def thousands_separator
-      if rules.has_key?(:thousands_separator)
-        rules[:thousands_separator] || ''
-      else
-        i18n_format_for(:thousands_separator, :delimiter, ',')
-      end
-    end
-
-    def decimal_mark
-      if rules.has_key?(:decimal_mark)
-        rules[:decimal_mark] || '.'
-      else
-        i18n_format_for(:decimal_mark, :separator, '.')
-      end
-    end
-
-    alias_method :delimiter, :thousands_separator
-    alias_method :separator, :decimal_mark
-
-    private
-
-    attr_reader :money, :currency, :rules
 
     def show_free_text?
       money.zero? && rules[:display_free]
+    end
+
+    def html_wrap(string, class_name)
+      "<span class=\"money-#{class_name}\">#{string}</span>"
     end
 
     def free_text
@@ -287,15 +342,10 @@ class Money
     end
 
     def format_whole_part(value)
-      # Determine thousands_separator
-      thousands_separator_value = if rules.has_key?(:thousands_separator)
-                                    rules[:thousands_separator] || ''
-                                  else
-                                    thousands_separator
-                                  end
-
       # Apply thousands_separator
-      value.gsub regexp_format, "\\1#{thousands_separator_value}"
+      value.gsub(rules[:delimiter_pattern]) do |digit_to_delimit|
+        "#{digit_to_delimit}#{thousands_separator}"
+      end
     end
 
     def extract_whole_and_decimal_parts
@@ -312,7 +362,7 @@ class Money
     end
 
     def format_decimal_part(value)
-      return nil if currency.decimal_places == 0
+      return nil if currency.decimal_places == 0 && !Money.default_infinite_precision
       return nil if rules[:no_cents]
       return nil if rules[:no_cents_if_whole] && value.to_i == 0
 
@@ -325,25 +375,14 @@ class Money
       value.empty? ? nil : value
     end
 
-    def i18n_format_for(method, name, character)
-      if Money.use_i18n
-        begin
-          I18n.t name, :scope => "number.currency.format", :raise => true
-        rescue I18n::MissingTranslationData
-          I18n.t name, :scope =>"number.format", :default => (currency.send(method) || character)
-        end
-      else
-        currency.send(method) || character
-      end
+    def lookup(key)
+      return rules[key] || DEFAULTS[key] if rules.has_key?(key)
+
+      lookup_default key
     end
 
-    def regexp_format
-      if rules[:south_asian_number_formatting]
-        # from http://blog.revathskumar.com/2014/11/regex-comma-seperated-indian-currency-format.html
-        /(\d+?)(?=(\d\d)+(\d)(?!\d))(\.\d+)?/
-      else
-        /(\d)(?=(?:\d{3})+(?:[^\d]{1}|$))/
-      end
+    def lookup_default(key)
+      (Money.locale_backend && Money.locale_backend.lookup(key, currency)) || DEFAULTS[key]
     end
 
     def symbol_value_from(rules)
@@ -359,26 +398,12 @@ class Money
         else
           ""
         end
-      elsif rules[:html]
+      elsif rules[:html] || rules[:html_wrap]
         currency.html_entity == '' ? currency.symbol : currency.html_entity
       elsif rules[:disambiguate] && currency.disambiguate_symbol
         currency.disambiguate_symbol
       else
         money.symbol
-      end
-    end
-
-    def symbol_position_from(rules)
-      if rules.has_key?(:symbol_position)
-        if [:before, :after].include?(rules[:symbol_position])
-          return rules[:symbol_position]
-        else
-          raise ArgumentError, ":symbol_position must be ':before' or ':after'"
-        end
-      elsif currency.symbol_first?
-        :before
-      else
-        :after
       end
     end
   end

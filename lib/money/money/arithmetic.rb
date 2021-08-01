@@ -16,7 +16,7 @@ class Money
     # @example
     #    - Money.new(100) #=> #<Money @fractional=-100>
     def -@
-      self.class.new(-fractional, currency, bank)
+      dup_with(fractional: -fractional)
     end
 
     # Checks whether two Money objects have the same currency and the same
@@ -46,7 +46,7 @@ class Money
     # Compares two Money objects. If money objects have a different currency it
     # will attempt to convert the currency.
     #
-    # @param [Money] other_money Value to compare with.
+    # @param [Money] other Value to compare with.
     #
     # @return [Integer]
     #
@@ -57,7 +57,12 @@ class Money
         return unless other.respond_to?(:zero?) && other.zero?
         return other.is_a?(CoercedNumeric) ? 0 <=> fractional : fractional <=> 0
       end
-      return 0 if zero? && other.zero?
+
+      # Always allow comparison with zero
+      if zero? || other.zero?
+        return fractional <=> other.fractional
+      end
+
       other = other.exchange_to(currency)
       fractional <=> other.fractional
     rescue Money::Bank::UnknownRate
@@ -103,7 +108,7 @@ class Money
     # values. If +other_money+ has a different currency then its monetary value
     # is automatically exchanged to this object's currency using +exchange_to+.
     #
-    # @param [Money] other_money Other +Money+ object to add.
+    # @param [Money] other Other +Money+ object to add.
     #
     # @return [Money]
     #
@@ -116,22 +121,32 @@ class Money
     # its monetary value is automatically exchanged to this object's currency
     # using +exchange_to+.
     #
-    # @param [Money] other_money Other +Money+ object to subtract.
+    # @param [Money] other Other +Money+ object to subtract.
     #
     # @return [Money]
     #
     # @example
     #   Money.new(100) - Money.new(99) #=> #<Money @fractional=1>
     [:+, :-].each do |op|
+      non_zero_message = lambda do |value|
+        "Can't add or subtract a non-zero #{value.class.name} value"
+      end
+
       define_method(op) do |other|
-        unless other.is_a?(Money)
-          if other.zero?
-            return other.is_a?(CoercedNumeric) ? Money.empty.public_send(op, self) : self
-          end
-          raise TypeError
+        case other
+        when Money
+          other = other.exchange_to(currency)
+          new_fractional = fractional.public_send(op, other.fractional)
+          dup_with(fractional: new_fractional)
+        when CoercedNumeric
+          raise TypeError, non_zero_message.call(other.value) unless other.zero?
+          dup_with(fractional: other.value.public_send(op, fractional))
+        when Numeric
+          raise TypeError, non_zero_message.call(other) unless other.zero?
+          self
+        else
+          raise TypeError, "Unsupported argument type: #{other.class.name}"
         end
-        other = other.exchange_to(currency)
-        self.class.new(fractional.public_send(op, other.fractional), currency, bank)
       end
     end
 
@@ -152,7 +167,7 @@ class Money
     def *(value)
       value = value.value if value.is_a?(CoercedNumeric)
       if value.is_a? Numeric
-        self.class.new(fractional * value, currency, bank)
+        dup_with(fractional: fractional * value)
       else
         raise TypeError, "Can't multiply a #{self.class.name} by a #{value.class.name}'s value"
       end
@@ -178,7 +193,7 @@ class Money
         fractional / as_d(value.exchange_to(currency).fractional).to_f
       else
         raise TypeError, 'Can not divide by Money' if value.is_a?(CoercedNumeric)
-        self.class.new(fractional / as_d(value), currency, bank)
+        dup_with(fractional: fractional / as_d(value))
       end
     end
 
@@ -216,13 +231,13 @@ class Money
     def divmod_money(val)
       cents = val.exchange_to(currency).cents
       quotient, remainder = fractional.divmod(cents)
-      [quotient, self.class.new(remainder, currency, bank)]
+      [quotient, dup_with(fractional: remainder)]
     end
     private :divmod_money
 
     def divmod_other(val)
       quotient, remainder = fractional.divmod(as_d(val))
-      [self.class.new(quotient, currency, bank), self.class.new(remainder, currency, bank)]
+      [dup_with(fractional: quotient), dup_with(fractional: remainder)]
     end
     private :divmod_other
 
@@ -266,7 +281,7 @@ class Money
       if (fractional < 0 && val < 0) || (fractional > 0 && val > 0)
         self.modulo(val)
       else
-        self.modulo(val) - (val.is_a?(Money) ? val : self.class.new(val, currency, bank))
+        self.modulo(val) - (val.is_a?(Money) ? val : dup_with(fractional: val))
       end
     end
 
@@ -277,7 +292,7 @@ class Money
     # @example
     #   Money.new(-100).abs #=> #<Money @fractional=100>
     def abs
-      self.class.new(fractional.abs, currency, bank)
+      dup_with(fractional: fractional.abs)
     end
 
     # Test if the money amount is zero.

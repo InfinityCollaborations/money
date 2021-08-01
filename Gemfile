@@ -1,7 +1,6 @@
 source 'https://rubygems.org'
 
-gem 'coveralls', '>= 0.8.17', :require => false
-gem 'pry', :require => false
+gem 'pry', require: false
 
 # JSON gem no longer supports ruby < 2.0.0
 if defined?(JRUBY_VERSION)
@@ -12,5 +11,6 @@ elsif RUBY_VERSION =~ /^1/
   gem 'tins',           '~> 1.6.0'
   gem 'term-ansicolor', '< 1.4'
 end
+gem 'i18n', '<= 1.2.0' if RUBY_VERSION < '2.3'
 
 gemspec

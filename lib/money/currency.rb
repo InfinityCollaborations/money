@@ -13,7 +13,6 @@ class Money
   class Currency
     include Comparable
     extend Enumerable
-    extend Money::Currency::Loader
     extend Money::Currency::Heuristics
 
     # Keeping cached instances in sync between threads
@@ -76,10 +75,12 @@ class Money
       #
       # @example
       #   Money::Currency.find_by_iso_numeric(978) #=> #<Money::Currency id: eur ...>
+      #   Money::Currency.find_by_iso_numeric(51) #=> #<Money::Currency id: amd ...>
       #   Money::Currency.find_by_iso_numeric('001') #=> nil
       def find_by_iso_numeric(num)
-        num = num.to_s
-        id, _ = self.table.find{|key, currency| currency[:iso_numeric] == num}
+        num = num.to_s.rjust(3, '0')
+        return if num.empty?
+        id, _ = self.table.find { |key, currency| currency[:iso_numeric] == num }
         new(id)
       rescue UnknownCurrency
         nil
@@ -120,14 +121,14 @@ class Money
       # See https://en.wikipedia.org/wiki/List_of_circulating_currencies and
       # http://search.cpan.org/~tnguyen/Locale-Currency-Format-1.28/Format.pm
       def table
-        @table ||= load_currencies
+        @table ||= Loader.load_currencies
       end
 
       # List the currencies imported and registered
       # @return [Array]
       #
       # @example
-      #   Money::Currency.iso_codes()
+      #   Money::Currency.all()
       #   [#<Currency ..USD>, 'CAD', 'EUR']...
       def all
         table.keys.map do |curr|
@@ -170,13 +171,13 @@ class Money
         key = curr.fetch(:iso_code).downcase.to_sym
         @@mutex.synchronize { _instances.delete(key.to_s) }
         @table[key] = curr
-        @stringified_keys = stringify_keys
+        @stringified_keys = nil
       end
 
       # Inherit a new currency from existing one
       #
       # @param parent_iso_code [String] the international 3-letter code as defined
-      # @param curr [Hash] See {register} method for hash structure 
+      # @param curr [Hash] See {register} method for hash structure
       def inherit(parent_iso_code, curr)
         parent_iso_code = parent_iso_code.downcase.to_sym
         curr = @table.fetch(parent_iso_code, {}).merge(curr)
@@ -197,15 +198,18 @@ class Money
           key = curr.downcase.to_sym
         end
         existed = @table.delete(key)
-        @stringified_keys = stringify_keys if existed
+        @stringified_keys = nil if existed
         existed ? true : false
       end
-
 
       def each
         all.each { |c| yield(c) }
       end
 
+      def reset!
+        @@instances = {}
+        @table = Loader.load_currencies
+      end
 
       private
 
@@ -253,7 +257,7 @@ class Money
 
     attr_reader :id, :priority, :iso_code, :iso_numeric, :name, :symbol,
       :disambiguate_symbol, :html_entity, :subunit, :subunit_to_unit, :decimal_mark,
-      :thousands_separator, :symbol_first, :smallest_denomination
+      :thousands_separator, :symbol_first, :smallest_denomination, :format
 
     alias_method :separator, :decimal_mark
     alias_method :delimiter, :thousands_separator
@@ -341,7 +345,7 @@ class Money
     # @example
     #   Money::Currency.new(:usd) #=> #<Currency id: usd ...>
     def inspect
-      "#<#{self.class.name} id: #{id}, priority: #{priority}, symbol_first: #{symbol_first}, thousands_separator: #{thousands_separator}, html_entity: #{html_entity}, decimal_mark: #{decimal_mark}, name: #{name}, symbol: #{symbol}, subunit_to_unit: #{subunit_to_unit}, exponent: #{exponent}, iso_code: #{iso_code}, iso_numeric: #{iso_numeric}, subunit: #{subunit}, smallest_denomination: #{smallest_denomination}>"
+      "#<#{self.class.name} id: #{id}, priority: #{priority}, symbol_first: #{symbol_first}, thousands_separator: #{thousands_separator}, html_entity: #{html_entity}, decimal_mark: #{decimal_mark}, name: #{name}, symbol: #{symbol}, subunit_to_unit: #{subunit_to_unit}, exponent: #{exponent}, iso_code: #{iso_code}, iso_numeric: #{iso_numeric}, subunit: #{subunit}, smallest_denomination: #{smallest_denomination}, format: #{format}>"
     end
 
     # Returns a string representation corresponding to the upcase +id+
@@ -401,9 +405,20 @@ class Money
       !!@symbol_first
     end
 
+    # Returns if a code currency is ISO.
+    #
+    # @return [Boolean]
+    #
+    # @example
+    #   Money::Currency.new(:usd).iso?
+    #
+    def iso?
+      iso_numeric && iso_numeric != ''
+    end
+
     # Returns the relation between subunit and unit as a base 10 exponent.
     #
-    # Note that MGA and MRO are exceptions and are rounded to 1
+    # Note that MGA and MRU are exceptions and are rounded to 1
     # @see https://en.wikipedia.org/wiki/ISO_4217#Active_codes
     #
     # @return [Integer]
@@ -430,6 +445,7 @@ class Money
       @symbol                = data[:symbol]
       @symbol_first          = data[:symbol_first]
       @thousands_separator   = data[:thousands_separator]
+      @format                = data[:format]
     end
   end
 end
